@@ -10,6 +10,8 @@ import {
 import { SCENARIOS } from "./fixtures";
 import {
   comparePrices,
+  equalSplitDust,
+  minHeldForValue,
   ownershipBps,
   shareValue,
   sumHolderFloors,
@@ -29,6 +31,8 @@ export function Demo() {
   const [multi, setMulti] = useState(false);
   const [holdingsText, setHoldingsText] = useState("1, 1");
   const [shareMsg, setShareMsg] = useState("");
+  const [minVal, setMinVal] = useState("1000");
+  const [parts, setParts] = useState("3");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -46,10 +50,10 @@ export function Demo() {
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (!raw) return;
-      const p = JSON.parse(raw) as Record<string, string | boolean>;
-      if (typeof p.whole === "string") setWhole(p.whole);
-      if (typeof p.held === "string") setHeld(p.held);
-      if (typeof p.supply === "string") setSupply(p.supply);
+      const p = JSON.parse(raw) as Record<string, string>;
+      if (p.whole) setWhole(p.whole);
+      if (p.held) setHeld(p.held);
+      if (p.supply) setSupply(p.supply);
     } catch {
       /* ignore */
     }
@@ -100,19 +104,43 @@ export function Demo() {
   const multiSum = useMemo(() => {
     if (!multi) return null;
     try {
-      const parts = holdingsText
+      const partsH = holdingsText
         .split(/[,\s]+/)
         .filter(Boolean)
         .map((x) => BigInt(x));
       return sumHolderFloors(
         BigInt(whole.trim() || "0"),
-        parts,
+        partsH,
         BigInt(supply.trim() || "0")
       );
     } catch {
       return { ok: false as const, reason: "Invalid holdings list" };
     }
   }, [multi, holdingsText, whole, supply]);
+
+  const minHeld = useMemo(() => {
+    try {
+      return minHeldForValue(
+        BigInt(whole.trim() || "0"),
+        BigInt(supply.trim() || "0"),
+        BigInt(minVal.trim() || "0")
+      );
+    } catch {
+      return null;
+    }
+  }, [whole, supply, minVal]);
+
+  const splitDust = useMemo(() => {
+    try {
+      return equalSplitDust(
+        BigInt(whole.trim() || "0"),
+        BigInt(supply.trim() || "0"),
+        Number(parts)
+      );
+    } catch {
+      return null;
+    }
+  }, [whole, supply, parts]);
 
   const applyScenario = (id: string) => {
     const s = SCENARIOS.find((x) => x.id === id);
@@ -146,6 +174,7 @@ export function Demo() {
 
   return (
     <main className="wrap">
+      <style>{`@media print { button, .no-print { display: none !important; } }`}</style>
       <p className="kicker">Educational reference · Pixel Journey</p>
       <h1>One share of a whole price</h1>
       <p className="lede">
@@ -154,6 +183,7 @@ export function Demo() {
       </p>
 
       <section
+        className="no-print"
         style={{
           marginBottom: "1.5rem",
           padding: "1rem",
@@ -174,7 +204,7 @@ export function Demo() {
         ))}
       </section>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
+      <div className="no-print" style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
         {SCENARIOS.map((s) => (
           <button key={s.id} type="button" onClick={() => applyScenario(s.id)}>
             {s.label}
@@ -219,7 +249,7 @@ export function Demo() {
               Ownership <strong>{bps.bps.toString()}</strong> bps
             </p>
           )}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+          <div className="no-print" style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
             <button
               type="button"
               onClick={() =>
@@ -253,16 +283,61 @@ export function Demo() {
             <button type="button" onClick={() => void copyShare()}>
               Copy share URL
             </button>
+            <button type="button" onClick={() => window.print()}>
+              Print
+            </button>
           </div>
           {shareMsg && (
-            <p style={{ fontSize: "0.85rem", opacity: 0.8 }}>{shareMsg}</p>
+            <p className="no-print" style={{ fontSize: "0.85rem", opacity: 0.8 }}>
+              {shareMsg}
+            </p>
           )}
         </>
       ) : (
         <p>{slice.reason}</p>
       )}
 
-      <label style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "1.5rem" }}>
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2 style={{ fontSize: "1rem" }}>Min held for a floor value</h2>
+        <label style={{ display: "block", marginBottom: "0.5rem" }}>
+          Target min value
+          <input
+            value={minVal}
+            onChange={(e) => setMinVal(e.target.value)}
+            style={{ display: "block", width: "100%", marginTop: "0.25rem" }}
+          />
+        </label>
+        {minHeld && minHeld.ok ? (
+          <p>
+            Need held ≥ <strong>{minHeld.held.toString()}</strong>
+          </p>
+        ) : minHeld && !minHeld.ok ? (
+          <p>{minHeld.reason}</p>
+        ) : null}
+      </section>
+
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2 style={{ fontSize: "1rem" }}>Equal-split dust</h2>
+        <label style={{ display: "block", marginBottom: "0.5rem" }}>
+          Parts
+          <input
+            value={parts}
+            onChange={(e) => setParts(e.target.value)}
+            style={{ display: "block", width: "100%", marginTop: "0.25rem" }}
+          />
+        </label>
+        {splitDust && splitDust.ok ? (
+          <p style={{ fontSize: "0.9rem" }}>
+            each {splitDust.each.toString()} · leftoverShares{" "}
+            {splitDust.leftoverShares.toString()} · floorSum{" "}
+            {splitDust.floorSum.toString()} · gap <strong>{splitDust.gap.toString()}</strong>
+          </p>
+        ) : splitDust && !splitDust.ok ? (
+          <p>{splitDust.reason}</p>
+        ) : null}
+      </section>
+
+      <label className="no-print" style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "1.5rem" }}>
         <input
           type="checkbox"
           checked={compare}
@@ -287,7 +362,7 @@ export function Demo() {
         </p>
       )}
 
-      <label style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "1rem" }}>
+      <label className="no-print" style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "1rem" }}>
         <input
           type="checkbox"
           checked={multi}
@@ -340,15 +415,17 @@ export function Demo() {
         </table>
       </section>
 
-      <Cases />
+      <div className="no-print">
+        <Cases />
+      </div>
 
       <section style={{ marginTop: "1.5rem" }}>
         <h2 style={{ fontSize: "1rem" }}>Runbook</h2>
         <ol style={{ fontSize: "0.9rem" }}>
-          <li>Set whole-asset price, held, and supply (same units your product stores).</li>
-          <li>Read floor value and remainder; check ownership bps.</li>
-          <li>Optional: compare prices, multi-holder dust, share URL, export.</li>
-          <li>Do not call this a live RWA index or redeemable NAV without separate design.</li>
+          <li>Set whole-asset price, held, and supply.</li>
+          <li>Read floor value, remainder, ownership bps.</li>
+          <li>Optional: min held for a target value; equal-split gap; compare; multi-holder.</li>
+          <li>Export / share / print — still not a live NAV claim.</li>
         </ol>
       </section>
 
@@ -366,8 +443,8 @@ export function Demo() {
         </dl>
       </section>
 
-      <p style={{ marginTop: "2rem", fontSize: "0.85rem", opacity: 0.75 }}>
-        URL query overrides localStorage when present. See EDUCATION.md · SECURITY.md
+      <p className="no-print" style={{ marginTop: "2rem", fontSize: "0.85rem", opacity: 0.75 }}>
+        See EDUCATION.md · SECURITY.md · POLICY.md
       </p>
     </main>
   );

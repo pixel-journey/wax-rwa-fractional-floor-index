@@ -6,5 +6,7 @@
 | --- | --- |
 | shareValue + invariants | unit |
 | sumHolderFloors / comparePrices / ownershipBps | unit |
-| shareState round-trip | unit |
+| minHeldForValue | unit |
+| equalSplit / equalSplitDust | unit |
+| shareState | unit |
 | Live RWA index | out of scope |

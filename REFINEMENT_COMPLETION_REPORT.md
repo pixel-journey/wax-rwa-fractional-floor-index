@@ -1,12 +1,12 @@
-# Fractional share — further pass
+# Fractional share — deepen pass
 
 **Updated:** 2026-11-03
 
 | Area | Notes |
 |------|-------|
-| Share URL | encode/decode + copy |
-| UI | Cases, worked examples, CSV, localStorage |
-| Tests | shareState |
+| Engine | minHeldForValue, equalSplit, equalSplitDust |
+| UI | min-held planner, equal-split gap, print |
+| Tests | new helpers |
 
 ```bash
 npm test && npm run dev

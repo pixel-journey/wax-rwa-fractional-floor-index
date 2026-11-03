@@ -7,17 +7,15 @@ value     = floor(wholePrice * held / supply)
 remainder = (wholePrice * held) % supply
 ```
 
-A positive `held` can still produce a small `value` and a non-zero `remainder` when the product does not divide evenly.
-
 ## Teaching points
 
-1. This is **not** a live RWA index or appraisal oracle.
-2. Summing per-holder floors can leave **dust** versus `wholePrice`.
-3. `ownershipBps` is a separate integer view of held/supply.
-4. Contract authors should unit-test tiny `held` against large `supply`.
+1. Not a live RWA index or appraisal oracle.
+2. Per-holder floors leave **dust**; equal splits can leave a **gap** vs wholePrice.
+3. `minHeldForValue` plans the smallest holding for a target floor value.
+4. `ownershipBps` is a separate integer view of held/supply.
 
 ## Related
 
-- `px-token-dust-truncation-visualizer` — tax/reward dust
-- `wax-market-cap-bubble` — supply × unit price scale
-- `wax-carbon-credit-and-sustainability-oracle` — another floor/remainder lab
+- `px-token-dust-truncation-visualizer`
+- `wax-market-cap-bubble`
+- `wax-carbon-credit-and-sustainability-oracle`

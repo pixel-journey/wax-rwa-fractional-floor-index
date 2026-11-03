@@ -7,9 +7,7 @@ export type SliceOk = {
   ok: true;
   value: bigint;
   remainder: bigint;
-  /** wholePrice * held */
   product: bigint;
-  /** true when product divides supply evenly */
   exact: boolean;
 };
 
@@ -69,7 +67,6 @@ export function assertSliceInvariants(
   }
 }
 
-/** Sum of independent holders' floor values (each remainder discarded per holder). */
 export function sumHolderFloors(
   wholePrice: bigint,
   holdings: readonly bigint[],
@@ -94,9 +91,6 @@ export function sumHolderFloors(
   return { ok: true, sum, dustTotal };
 }
 
-/**
- * Compare pro-rata floor for the same held under two whole prices.
- */
 export function comparePrices(
   held: bigint,
   supply: bigint,
@@ -110,7 +104,6 @@ export function comparePrices(
   return { ok: true, a, b, valueDelta: a.value - b.value };
 }
 
-/** Basis points of held / supply (floor). */
 export function ownershipBps(
   held: bigint,
   supply: bigint
@@ -122,4 +115,80 @@ export function ownershipBps(
     return { ok: false, reason: "held cannot exceed supply" };
   }
   return { ok: true, bps: (held * 10_000n) / supply };
+}
+
+/**
+ * Smallest held ≥ 1 such that floor(wholePrice * held / supply) ≥ minValue.
+ * null if minValue is 0 (any held including 0 works for value 0) — returns 0n.
+ * fails if even full supply cannot reach minValue.
+ */
+export function minHeldForValue(
+  wholePrice: bigint,
+  supply: bigint,
+  minValue: bigint
+): { ok: false; reason: string } | { ok: true; held: bigint } {
+  if (wholePrice < 0n || supply <= 0n || minValue < 0n) {
+    return { ok: false, reason: "wholePrice ≥ 0, supply > 0, minValue ≥ 0" };
+  }
+  if (minValue === 0n) return { ok: true, held: 0n };
+  // ceil(minValue * supply / wholePrice) but wholePrice may be 0
+  if (wholePrice === 0n) {
+    return { ok: false, reason: "wholePrice 0 cannot fund positive minValue" };
+  }
+  const held = (minValue * supply + wholePrice - 1n) / wholePrice;
+  if (held > supply) {
+    return { ok: false, reason: "even full supply cannot reach minValue" };
+  }
+  return { ok: true, held };
+}
+
+/**
+ * Split supply into `parts` equal integer holdings (remainder shares as leftover).
+ * Educational for “equal split still leaves dust on price floors.”
+ */
+export function equalSplit(
+  supply: bigint,
+  parts: number
+): { ok: false; reason: string } | { ok: true; each: bigint; leftover: bigint } {
+  if (supply <= 0n) return { ok: false, reason: "supply must be positive" };
+  if (!Number.isInteger(parts) || parts < 1 || parts > 64) {
+    return { ok: false, reason: "parts must be an integer from 1 to 64" };
+  }
+  const each = supply / BigInt(parts);
+  const leftover = supply % BigInt(parts);
+  return { ok: true, each, leftover };
+}
+
+/**
+ * Gap between wholePrice and sum of equal-split holder floors.
+ */
+export function equalSplitDust(
+  wholePrice: bigint,
+  supply: bigint,
+  parts: number
+): {
+  ok: false;
+  reason: string;
+} | {
+  ok: true;
+  each: bigint;
+  leftoverShares: bigint;
+  floorSum: bigint;
+  gap: bigint;
+} {
+  const split = equalSplit(supply, parts);
+  if (!split.ok) return split;
+  if (wholePrice < 0n) return { ok: false, reason: "wholePrice must be non-negative" };
+  const holdings = Array.from({ length: parts }, () => split.each);
+  // leftover shares assigned to no one in this equal model
+  const floors = sumHolderFloors(wholePrice, holdings, supply);
+  if (!floors.ok) return floors;
+  const gap = wholePrice - floors.sum;
+  return {
+    ok: true,
+    each: split.each,
+    leftoverShares: split.leftover,
+    floorSum: floors.sum,
+    gap: gap < 0n ? 0n : gap,
+  };
 }
