@@ -1,8 +1,10 @@
 # Verification Log
 
-**Updated:** 2026-10-31
+**Updated:** 2026-11-03
 
 | Claim | Status |
 | --- | --- |
-| shareValue | unit |
+| shareValue + invariants | unit |
+| sumHolderFloors | unit |
+| comparePrices / ownershipBps | unit |
 | Live RWA index | out of scope |

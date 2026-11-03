@@ -1,5 +1,15 @@
 # Architecture
 
-Divide a whole price by supply for the shares held.
+```
+wholePrice, held, supply
+        │
+        ▼
+   shareValue → value, remainder, product, exact
+        │
+        ├── ownershipBps
+        ├── comparePrices
+        ├── sumHolderFloors
+        └── exportSliceMarkdown
+```
 
-The page calls the same functions as the tests. It does not open a socket and it does not sign.
+Honesty boundary: no market feed, no wallet, no broadcast.
