@@ -5,6 +5,6 @@
 | Claim | Status |
 | --- | --- |
 | shareValue + invariants | unit |
-| sumHolderFloors | unit |
-| comparePrices / ownershipBps | unit |
+| sumHolderFloors / comparePrices / ownershipBps | unit |
+| shareState round-trip | unit |
 | Live RWA index | out of scope |

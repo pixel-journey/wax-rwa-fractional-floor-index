@@ -1,7 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { downloadText, exportSliceMarkdown } from "./exportReport";
+import { useEffect, useMemo, useState } from "react";
+import { Cases } from "./Cases";
+import {
+  downloadText,
+  exportSliceCsv,
+  exportSliceMarkdown,
+} from "./exportReport";
 import { SCENARIOS } from "./fixtures";
 import {
   comparePrices,
@@ -10,6 +15,10 @@ import {
   sumHolderFloors,
 } from "./floor";
 import { FLOOR_MYTHS, GLOSSARY } from "./myths";
+import { decodeShareState, encodeShareState } from "./shareState";
+import { WORKED_EXAMPLES } from "./workedExamples";
+
+const LS_KEY = "pxj-rwa-floor-v1";
 
 export function Demo() {
   const [whole, setWhole] = useState("1000000");
@@ -19,6 +28,40 @@ export function Demo() {
   const [compare, setCompare] = useState(false);
   const [multi, setMulti] = useState(false);
   const [holdingsText, setHoldingsText] = useState("1, 1");
+  const [shareMsg, setShareMsg] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const fromUrl = decodeShareState(window.location.search);
+    if (fromUrl.whole || fromUrl.held || fromUrl.supply) {
+      if (fromUrl.whole) setWhole(fromUrl.whole);
+      if (fromUrl.held) setHeld(fromUrl.held);
+      if (fromUrl.supply) setSupply(fromUrl.supply);
+      if (fromUrl.compare) setCompare(true);
+      if (fromUrl.priceB) setPriceB(fromUrl.priceB);
+      if (fromUrl.multi) setMulti(true);
+      if (fromUrl.holdingsText) setHoldingsText(fromUrl.holdingsText);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const p = JSON.parse(raw) as Record<string, string | boolean>;
+      if (typeof p.whole === "string") setWhole(p.whole);
+      if (typeof p.held === "string") setHeld(p.held);
+      if (typeof p.supply === "string") setSupply(p.supply);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({ whole, held, supply }));
+    } catch {
+      /* ignore */
+    }
+  }, [whole, held, supply]);
 
   const slice = useMemo(() => {
     try {
@@ -77,6 +120,28 @@ export function Demo() {
     setWhole(s.wholePrice);
     setHeld(s.held);
     setSupply(s.supply);
+  };
+
+  const copyShare = async () => {
+    const qs = encodeShareState({
+      whole,
+      held,
+      supply,
+      priceB,
+      compare,
+      multi,
+      holdingsText,
+    });
+    const path =
+      typeof window !== "undefined"
+        ? `${window.location.origin}${window.location.pathname}?${qs}`
+        : `?${qs}`;
+    try {
+      await navigator.clipboard.writeText(path);
+      setShareMsg("Share URL copied");
+    } catch {
+      setShareMsg(path);
+    }
   };
 
   return (
@@ -154,17 +219,44 @@ export function Demo() {
               Ownership <strong>{bps.bps.toString()}</strong> bps
             </p>
           )}
-          <button
-            type="button"
-            onClick={() =>
-              downloadText(
-                "share-value.md",
-                exportSliceMarkdown(whole, held, supply, slice)
-              )
-            }
-          >
-            Download MD
-          </button>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+            <button
+              type="button"
+              onClick={() =>
+                downloadText(
+                  "share-value.md",
+                  exportSliceMarkdown(whole, held, supply, slice)
+                )
+              }
+            >
+              Download MD
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                downloadText(
+                  "share-value.csv",
+                  exportSliceCsv({
+                    wholePrice: whole,
+                    held,
+                    supply,
+                    value: slice.value.toString(),
+                    remainder: slice.remainder.toString(),
+                    exact: String(slice.exact),
+                  }),
+                  "text/csv;charset=utf-8"
+                )
+              }
+            >
+              Download CSV
+            </button>
+            <button type="button" onClick={() => void copyShare()}>
+              Copy share URL
+            </button>
+          </div>
+          {shareMsg && (
+            <p style={{ fontSize: "0.85rem", opacity: 0.8 }}>{shareMsg}</p>
+          )}
         </>
       ) : (
         <p>{slice.reason}</p>
@@ -222,7 +314,45 @@ export function Demo() {
       )}
       {multiSum && !multiSum.ok && <p>{multiSum.reason}</p>}
 
-      <section style={{ marginTop: "2rem" }}>
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2 style={{ fontSize: "1rem" }}>Worked examples</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>whole</th>
+              <th>held</th>
+              <th>supply</th>
+              <th>value</th>
+              <th>remainder</th>
+            </tr>
+          </thead>
+          <tbody>
+            {WORKED_EXAMPLES.map((row) => (
+              <tr key={`${row.whole}-${row.held}-${row.supply}`}>
+                <td>{row.whole}</td>
+                <td>{row.held}</td>
+                <td>{row.supply}</td>
+                <td>{row.value}</td>
+                <td>{row.remainder}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <Cases />
+
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2 style={{ fontSize: "1rem" }}>Runbook</h2>
+        <ol style={{ fontSize: "0.9rem" }}>
+          <li>Set whole-asset price, held, and supply (same units your product stores).</li>
+          <li>Read floor value and remainder; check ownership bps.</li>
+          <li>Optional: compare prices, multi-holder dust, share URL, export.</li>
+          <li>Do not call this a live RWA index or redeemable NAV without separate design.</li>
+        </ol>
+      </section>
+
+      <section style={{ marginTop: "1.5rem" }}>
         <h2 style={{ fontSize: "1rem" }}>Glossary</h2>
         <dl>
           {GLOSSARY.map((g) => (
@@ -237,8 +367,7 @@ export function Demo() {
       </section>
 
       <p style={{ marginTop: "2rem", fontSize: "0.85rem", opacity: 0.75 }}>
-        See EDUCATION.md · POLICY.md · SECURITY.md · companions: market-cap-bubble,
-        dust-truncation-visualizer
+        URL query overrides localStorage when present. See EDUCATION.md · SECURITY.md
       </p>
     </main>
   );

@@ -1,13 +1,12 @@
-# Full-thrust — fractional share value
+# Fractional share — further pass
 
 **Updated:** 2026-11-03
 
 | Area | Notes |
 |------|-------|
-| Engine | shareValue expanded, sumHolderFloors, comparePrices, ownershipBps |
-| Tests | invariants, multi-holder dust |
-| Docs | EDUCATION, ARCHITECTURE, POLICY, SECURITY |
-| UI | scenarios, compare, multi-holder, MD export |
+| Share URL | encode/decode + copy |
+| UI | Cases, worked examples, CSV, localStorage |
+| Tests | shareState |
 
 ```bash
 npm test && npm run dev

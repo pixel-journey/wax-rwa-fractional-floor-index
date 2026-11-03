@@ -23,9 +23,28 @@ export function exportSliceMarkdown(
   ].join("\n");
 }
 
-export function downloadText(filename: string, content: string): void {
+export function exportSliceCsv(row: {
+  wholePrice: string;
+  held: string;
+  supply: string;
+  value: string;
+  remainder: string;
+  exact: string;
+}): string {
+  return [
+    "whole_price,held,supply,value,remainder,exact",
+    `${row.wholePrice},${row.held},${row.supply},${row.value},${row.remainder},${row.exact}`,
+    "",
+  ].join("\n");
+}
+
+export function downloadText(
+  filename: string,
+  content: string,
+  mime = "text/plain;charset=utf-8"
+): void {
   if (typeof document === "undefined") return;
-  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
