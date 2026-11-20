@@ -1,7 +1,7 @@
 # A holder's floor of a whole price — not an RWA index
 
 > **Trust:** `educational-reference`  
-> **Catalog:** [wax-ecosystem-blueprint-catalog](https://github.com/pixel-journey/wax-ecosystem-blueprint-catalog)
+> **Catalog:** `wax-ecosystem-blueprint-catalog` (private index; not this public course)
 
 **One-sentence goal:** Teach `floor(wholePrice * held / supply)`, the remainder, equal-split leftover shares, and the gap when holder floors do not add back to the whole price.
 
